@@ -147,24 +147,27 @@ def scraper(request):
     print(f"Fetched {len(all_jobs)} total jobs from all sources")
 
     # Process each job — no Gemini enrichment for now
+    # Process each job with Gemini enrichment
     new_jobs = []
     for job in all_jobs:
         job_id = str(job['id'])
         if not is_new_job(job_id, container):
             print(f"Already seen: {job_id}, skipping")
             continue
-        # Add basic fields without AI enrichment
-        job['match_score_percent'] = 0
-        job['is_remote'] = 'remote' in job.get('location', '').lower()
-        job['estimated_salary_min'] = 0
-        job['estimated_salary_max'] = 0
-        job['primary_cloud'] = 'Unknown'
-        job['constraint_violations'] = []
-        job['upskill_recommendations'] = []
-        job['processed_date'] = TODAY
-        new_jobs.append(job)
-        mark_job_seen(job_id, container)
-        print(f"Processed: {job['title']}")
+        try:
+            enrichment = enrich_with_gemini(job, profile, gemini_client)
+            job.update(enrichment)
+            job['processed_date'] = TODAY
+            new_jobs.append(job)
+            mark_job_seen(job_id, container)
+            print(f"Processed: {job['title']} — score: {job.get('match_score_percent')}%")
+            time.sleep(4)  # 15 req/min free tier = 1 req per 4 seconds
+        except Exception as e:
+            print(f"Error enriching job {job_id}: {e}")
+            if '429' in str(e) or 'RESOURCE_EXHAUSTED' in str(e):
+                print("Gemini rate limit hit — stopping enrichment, saving processed jobs")
+                break
+            continue
 
     print(f"Found {len(new_jobs)} new jobs after dedup")
 
