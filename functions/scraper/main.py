@@ -163,6 +163,9 @@ def scraper(request):
             time.sleep(2)  # prevent Gemini rate limit
         except Exception as e:
             print(f"Error enriching job {job_id}: {e}")
+            if '429' in str(e) or 'RESOURCE_EXHAUSTED' in str(e):
+                print("Gemini rate limit hit — stopping enrichment, saving processed jobs")
+                break
             continue
 
     print(f"Found {len(new_jobs)} new jobs after dedup")
