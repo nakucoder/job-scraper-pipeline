@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Job Scraper Pipeline — Multi-Cloud DE Portfolio Project
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 60
+    Environment:
+      Variables:
+        S3_BUCKET: job-scraper-pipeline-juan
+        DYNAMODB_TABLE: !Ref PipelineMetadataTable
+
+Resources:
+
+  # ── DynamoDB Pipeline Metadata ────────────────────────────────────────────
+  PipelineMetadataTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: job-pipeline-metadata
+      PrimaryKey:
+        Name: run_id
+        Type: String
+
+  # ── Lambda 1: Filter + Email ──────────────────────────────────────────────
+  FilterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: job-filter-email
+      CodeUri: functions/filter/
+      Handler: app.lambda_handler
+      Description: Reads today S3 partition, builds digest, sends via SES
+      Policies:
+        - S3ReadPolicy:
+            BucketName: job-scraper-pipeline-juan
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PipelineMetadataTable
+        - SESCrudPolicy:
+            IdentityName: juanakuspinelli@gmail.com
+        - SSMParameterReadPolicy:
+            ParameterName: /job-pipeline/*
+      Events:
+        DailyFilter:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 11 * * ? *)
+            Name: job-filter-daily
+            Enabled: true
+
+  # ── Lambda 2: API ─────────────────────────────────────────────────────────
+  JobsApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: jobs-api
+      CodeUri: functions/api/
+      Handler: app.lambda_handler
+      Description: Serves /jobs endpoint via API Gateway
+      Policies:
+        - S3ReadPolicy:
+            BucketName: job-scraper-pipeline-juan
+        - SSMParameterReadPolicy:
+            ParameterName: /job-pipeline/*
+      Events:
+        GetJobs:
+          Type: Api
+          Properties:
+            Path: /jobs
+            Method: get
+        GetJobsOptions:
+          Type: Api
+          Properties:
+            Path: /jobs
+            Method: options
+
+Outputs:
+  JobsApiEndpoint:
+    Description: Public API Gateway endpoint
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/jobs'
+
+  DynamoDBTable:
+    Value: !Ref PipelineMetadataTable

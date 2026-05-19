@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "last_updated": "2026-05-18",
+    "target_roles": [
+      "Junior Data Engineer",
+      "Junior Software Engineer",
+      "Data Engineer",
+      "Cloud Engineer",
+      "Associate Data Engineer",
+      "SRE / DevOps Engineer"
+    ]
+  },
+  "hard_filters": {
+    "locations": ["Miami", "Miami Beach", "Remote", "Hybrid", "Austin"],
+    "requires_security_clearance": false,
+    "allowed_hybrid_radius_miles": 25
+  },
+  "soft_preferences": {
+    "compensation": {
+      "ideal_target_usd": 75000,
+      "minimum_soft_floor_usd": 50000
+    },
+    "core_stack": [
+      "Python", "SQL", "AWS", "Docker", "FastAPI",
+      "PostgreSQL", "DynamoDB", "Lambda", "S3",
+      "EventBridge", "GitHub Actions"
+    ],
+    "nice_to_have": [
+      "Spark", "Kafka", "Airflow", "Terraform", "Snowflake"
+    ],
+    "target_industries": [
+      "FinTech", "Logistics", "Healthcare Tech", "Defense & Aerospace"
+    ]
+  }
+}
