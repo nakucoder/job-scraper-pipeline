@@ -160,7 +160,7 @@ def scraper(request):
             new_jobs.append(job)
             mark_job_seen(job_id, container)
             print(f"Processed: {job['title']} — score: {job.get('match_score_percent')}%")
-            time.sleep(2)  # prevent Gemini rate limit
+            time.sleep(4)  # prevent Gemini rate limit
         except Exception as e:
             print(f"Error enriching job {job_id}: {e}")
             if '429' in str(e) or 'RESOURCE_EXHAUSTED' in str(e):
