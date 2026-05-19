@@ -7,6 +7,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,5 +29,11 @@ jobs:
           aws-region: us-east-1
 
       - name: Deploy with SAM
-        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
-# Job Scraper Pipeline
+        run: |
+          sam deploy \
+            --stack-name job-scraper-pipeline \
+            --region us-east-1 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --resolve-s3
