@@ -55,22 +55,22 @@ Each job posting is passed through Gemini Flash Lite which returns:
 
 ## 🗂️ Project Structure
 
-
-
+```
 job-scraper-pipeline/
 ├── template.yaml              # SAM template — all AWS infrastructure
 ├── config/
 │   └── candidate_profile.json # Runtime config — skills, salary, locations
 └── functions/
-├── scraper/               # GCP Cloud Function
-│   ├── main.py
-│   └── requirements.txt
-├── filter/                # AWS Lambda — email digest
-│   ├── app.py
-│   └── requirements.txt
-└── api/                   # AWS Lambda — /jobs endpoint
-├── app.py
-└── requirements.txt
+    ├── scraper/               # GCP Cloud Function
+    │   ├── main.py
+    │   └── requirements.txt
+    ├── filter/                # AWS Lambda — email digest
+    │   ├── app.py
+    │   └── requirements.txt
+    └── api/                   # AWS Lambda — /jobs endpoint
+        ├── app.py
+        └── requirements.txt
+```
 
 
 ## 🔐 Security
