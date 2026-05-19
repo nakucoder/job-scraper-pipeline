@@ -64,7 +64,6 @@ def fetch_remotive():
 def fetch_rss_feeds():
     # 3 jobs each = 6 jobs
     feeds = [
-        ('https://stackoverflow.com/jobs/feed?q=data+engineer&l=Miami', 'StackOverflow'),
         ('https://www.indeed.com/rss?q=junior+data+engineer&l=Miami%2C+FL', 'Indeed'),
     ]
     jobs = []
