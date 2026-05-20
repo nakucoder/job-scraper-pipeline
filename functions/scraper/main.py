@@ -5,8 +5,7 @@ import boto3
 import requests
 import feedparser
 from datetime import datetime
-from google import genai
-from google.genai import types
+from groq import Groq
 from azure.cosmos import CosmosClient
 
 # ── Config ──────────────────────────────────────────────────────────────────
@@ -83,32 +82,29 @@ def fetch_rss_feeds():
 
 # ── Gemini Enrichment ────────────────────────────────────────────────────────
 def enrich_with_gemini(job, profile, gemini_client):
-    schema = {
-        'type': 'OBJECT',
-        'properties': {
-            'match_score_percent': {'type': 'INTEGER'},
-            'is_remote': {'type': 'BOOLEAN'},
-            'estimated_salary_min': {'type': 'INTEGER'},
-            'estimated_salary_max': {'type': 'INTEGER'},
-            'primary_cloud': {'type': 'STRING'},
-            'constraint_violations': {'type': 'ARRAY', 'items': {'type': 'STRING'}},
-            'upskill_recommendations': {'type': 'ARRAY', 'items': {'type': 'STRING'}}
-        },
-        'required': ['match_score_percent', 'is_remote', 'constraint_violations', 'upskill_recommendations']
-    }
-    response = gemini_client.models.generate_content(
-        model='gemini-2.0-flash-lite',
-        contents=f"Analyze this job: {json.dumps(job)}",
-        config=types.GenerateContentConfig(
-            system_instruction=f"""You are a job matching engine. Score this job against the candidate profile.
-Profile: {json.dumps(profile)}
-Return structured JSON only. For constraint_violations list any mismatches with hard_filters or soft_preferences.
-For upskill_recommendations list skills in the job not in the candidate profile.""",
-            response_mime_type='application/json',
-            response_schema=schema
-        )
+    prompt = f"""You are a job matching engine. Analyze this job posting against the candidate profile and return ONLY a JSON object with no extra text.
+
+Candidate Profile: {json.dumps(profile)}
+Job Posting: {json.dumps(job)}
+
+Return this exact JSON structure:
+{{
+    "match_score_percent": <integer 0-100>,
+    "is_remote": <true or false>,
+    "estimated_salary_min": <integer or 0 if unknown>,
+    "estimated_salary_max": <integer or 0 if unknown>,
+    "primary_cloud": "<AWS, Azure, GCP, Hybrid, or Unknown>",
+    "constraint_violations": [<list of strings describing mismatches>],
+    "upskill_recommendations": [<list of skills in job not in candidate profile>]
+}}"""
+
+    response = gemini_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=0.1
     )
-    return json.loads(response.text)
+    return json.loads(response.choices[0].message.content)
 
 # ── Dedup via Cosmos DB ──────────────────────────────────────────────────────
 def is_new_job(job_id, cosmos_container):
@@ -130,8 +126,8 @@ def scraper(request):
     profile = json.loads(obj['Body'].read())
 
     # Init Gemini
-    gemini_api_key = get_ssm('/job-pipeline/gemini-api-key')
-    gemini_client = genai.Client(api_key=gemini_api_key)
+    groq_api_key = get_ssm('/job-pipeline/groq-api-key')
+    gemini_client = Groq(api_key=groq_api_key)
 
     # Init Cosmos DB
     cosmos_conn = get_ssm('/job-pipeline/cosmos-connection-string')

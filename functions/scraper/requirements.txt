@@ -4,3 +4,4 @@ boto3==1.43.10
 requests==2.34.2
 feedparser==6.0.12
 functions-framework==3.8.2
+groq==1.2.0
