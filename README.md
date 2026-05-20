@@ -3,7 +3,7 @@
 A fully automated, serverless, multi-cloud job scraper that runs daily, enriches listings with AI scoring, and delivers a personalized digest to your inbox.
 
 ## 🏗️ Architecture
-GCP Cloud Scheduler → Cloud Function → Vertex AI (Gemini)
+GCP Cloud Scheduler → Cloud Function → Groq (Llama 3.3 70B)
 → Azure Cosmos DB (dedup)
 → AWS S3 (data lake)
 → AWS Lambda (filter + email)
@@ -18,7 +18,7 @@ GCP Cloud Scheduler → Cloud Function → Vertex AI (Gemini)
 |-------|---------|---------|------|
 | GCP | Cloud Scheduler | Daily cron trigger | Free |
 | GCP | Cloud Functions | Scraper + AI enrichment | Free tier |
-| GCP | Gemini Flash Lite | AI job scoring | Free tier |
+| Groq | Llama 3.3 70B | AI job scoring | Free forever (14,400 req/day) |
 | Azure | Cosmos DB | Deduplication store | Free forever |
 | AWS | S3 | Data lake (YYYY/MM/DD partitions) | Free tier |
 | AWS | Lambda ×2 | Filter + API | Free tier |
@@ -32,7 +32,7 @@ GCP Cloud Scheduler → Cloud Function → Vertex AI (Gemini)
 
 ## 🧠 AI Enrichment
 
-Each job posting is passed through Gemini Flash Lite which returns:
+Each job posting is passed through Groq's Llama 3.3 70B which returns:
 
 ```json
 {
@@ -118,7 +118,7 @@ GET https://q0xo68b302.execute-api.us-east-1.amazonaws.com/Prod/jobs
 ## 🗣️ Interview Talking Points
 
 - **Multi-cloud by design** — each provider's strongest free tier for each task
-- **AI as ETL** — Gemini converts unstructured job text into structured, queryable data
+- **AI as ETL** — Groq (Llama 3.3 70B) converts unstructured job text into structured, queryable data
 - **Config over code** — candidate_profile.json in S3 means zero redeployment to update preferences
 - **Least privilege IAM** — each Lambda has only the permissions it needs
 - **Observability** — CloudWatch logs + SNS alerts on every run
