@@ -43,7 +43,7 @@ Resources:
         DailyFilter:
           Type: Schedule
           Properties:
-            Schedule: cron(30 11 * * ? *)
+            Schedule: cron(30 15 * * ? *)
             Name: job-filter-daily
             Enabled: true
 
