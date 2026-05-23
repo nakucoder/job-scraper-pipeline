@@ -101,6 +101,13 @@ gcloud functions deploy job-scraper \
   --memory=512MB
 ```
 
+### GCP (Cloud Scheduler)
+The Cloud Scheduler job is not defined in `template.yaml` — run the provided script to create it:
+```bash
+./setup.sh
+```
+Fires daily at **11:00 AM ET**, 30 minutes before the AWS email digest (3:30 PM UTC / 11:30 AM ET). The script is idempotent and safe to re-run.
+
 ## 📊 API Endpoint
 
 
