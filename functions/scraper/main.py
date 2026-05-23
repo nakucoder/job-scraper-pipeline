@@ -94,33 +94,29 @@ def fetch_remotive_swe():
             })
     return jobs
 
-def fetch_themuse():
+def fetch_jobicy():
     # Free public API — no key required.
-    # Note: The Muse's public API has sparse data. "Entry Level" filter returns
-    # 0 results; querying without a level filter and using the categories that
-    # actually have listings ("Software Engineer", "Data Science").
-    # Contents field is HTML — strip tags before storing.
+    # Tags must use spaces, not hyphens ('data engineer', not 'data-engineer').
+    # jobDescription field is HTML — strip tags before storing.
     jobs = []
-    for category in ('Software Engineer', 'Data Science'):
+    for tag in ('data engineer', 'software engineer'):
         r = requests.get(
-            'https://www.themuse.com/api/public/jobs',
-            params={'category': category, 'page': 0}
+            'https://jobicy.com/api/v2/remote-jobs',
+            params={'count': 20, 'tag': tag}
         )
-        if r.status_code != 200:
+        if r.status_code != 200 or not r.json().get('success'):
             continue
-        for item in r.json().get('results', []):
-            locations = item.get('locations', [])
-            location = locations[0]['name'] if locations else 'Not specified'
-            html = item.get('contents', '')
+        for item in r.json().get('jobs', []):
+            html = item.get('jobDescription', '')
             description = re.sub(r'<[^>]+>', ' ', html).strip()[:500]
             jobs.append({
-                'id': f"themuse-{item['id']}",
-                'title': item['name'],
-                'company': item.get('company', {}).get('name', 'Unknown'),
-                'location': location,
-                'url': item.get('refs', {}).get('landing_page', ''),
+                'id': f"jobicy-{item['id']}",
+                'title': item['jobTitle'],
+                'company': item['companyName'],
+                'location': item.get('jobGeo', 'Remote'),
+                'url': item['url'],
                 'description': description,
-                'source': 'TheMuse'
+                'source': 'Jobicy'
             })
     return jobs
 
@@ -183,7 +179,7 @@ def scraper(request):
     all_jobs.extend(fetch_usajobs(profile))
     all_jobs.extend(fetch_remotive())
     all_jobs.extend(fetch_remotive_swe())
-    all_jobs.extend(fetch_themuse())
+    all_jobs.extend(fetch_jobicy())
 
     print(f"Fetched {len(all_jobs)} total jobs from all sources")
 
