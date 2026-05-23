@@ -3,7 +3,6 @@ import os
 import time
 import boto3
 import requests
-import feedparser
 from datetime import datetime
 from groq import Groq
 from azure.cosmos import CosmosClient
@@ -19,16 +18,32 @@ def get_ssm(name):
 
 # ── Job Sources (total ~17 jobs) ─────────────────────────────────────────────
 def fetch_usajobs(profile):
-    # 3 roles x 2 jobs = 6 jobs
     api_key = get_ssm('/job-pipeline/usajobs-api-key')
     headers = {
         'Authorization-Key': api_key,
         'User-Agent': 'juanakuspinelli@gmail.com'
     }
+    # Federal job titles use GS grade levels, not "Junior"/"Associate" prefixes.
+    # Querying with those prefixes returns 0 results. Strip them and deduplicate.
+    prefixes = ('Junior ', 'Associate ', 'SRE / ')
+    seen_keywords, keywords = set(), []
+    for role in profile['meta']['target_roles']:
+        normalized = role
+        for p in prefixes:
+            normalized = normalized.replace(p, '')
+        if normalized not in seen_keywords:
+            seen_keywords.add(normalized)
+            keywords.append(normalized)
+
     jobs = []
-    for role in profile['meta']['target_roles'][:3]:
-        url = f'https://data.usajobs.gov/api/search?Keyword={role}&LocationName=Miami&ResultsPerPage=2'
-        r = requests.get(url, headers=headers)
+    for keyword in keywords[:4]:
+        # No LocationName filter — federal postings are nationwide/remote and
+        # Miami rarely has matching listings, which caused 0 results since May 19.
+        r = requests.get(
+            'https://data.usajobs.gov/api/search',
+            headers=headers,
+            params={'Keyword': keyword, 'ResultsPerPage': 3}
+        )
         if r.status_code == 200:
             for item in r.json().get('SearchResult', {}).get('SearchResultItems', []):
                 d = item['MatchedObjectDescriptor']
@@ -60,23 +75,21 @@ def fetch_remotive():
             })
     return jobs
 
-def fetch_rss_feeds():
-    # 3 jobs each = 6 jobs
-    feeds = [
-        ('https://www.indeed.com/rss?q=junior+data+engineer&l=Miami%2C+FL', 'Indeed'),
-    ]
+def fetch_remotive_swe():
+    # Indeed RSS permanently blocked by Cloudflare (HTTP 403) — replaced with
+    # a second Remotive query targeting software engineering roles.
+    r = requests.get('https://remotive.com/api/remote-jobs?category=software-dev&limit=5')
     jobs = []
-    for url, source in feeds:
-        feed = feedparser.parse(url)
-        for entry in feed.entries[:3]:
+    if r.status_code == 200:
+        for item in r.json().get('jobs', []):
             jobs.append({
-                'id': entry.get('id', entry.link),
-                'title': entry.title,
-                'company': entry.get('author', 'Unknown'),
-                'location': 'Miami',
-                'url': entry.link,
-                'description': entry.get('summary', '')[:500],
-                'source': source
+                'id': f"remotive-swe-{item['id']}",
+                'title': item['title'],
+                'company': item['company_name'],
+                'location': item.get('candidate_required_location', 'Remote'),
+                'url': item['url'],
+                'description': item.get('description', '')[:500],
+                'source': 'Remotive'
             })
     return jobs
 
@@ -138,7 +151,7 @@ def scraper(request):
     all_jobs = []
     all_jobs.extend(fetch_usajobs(profile))
     all_jobs.extend(fetch_remotive())
-    all_jobs.extend(fetch_rss_feeds())
+    all_jobs.extend(fetch_remotive_swe())
 
     print(f"Fetched {len(all_jobs)} total jobs from all sources")
 
