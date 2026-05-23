@@ -67,6 +67,22 @@ def test_remotive_api():
     assert 'jobs' in data, "Remotive response missing jobs key"
     assert len(data['jobs']) > 0, "Remotive returned 0 jobs"
 
+def test_themuse_api():
+    r = requests.get(
+        'https://www.themuse.com/api/public/jobs',
+        params={'category': 'Software Engineer', 'page': 0},
+        timeout=10
+    )
+    assert r.status_code == 200, f"The Muse returned {r.status_code}"
+    data = r.json()
+    assert 'results' in data, "The Muse response missing results key"
+    results = data['results']
+    assert len(results) > 0, "The Muse returned 0 jobs for Software Engineer category"
+    job = results[0]
+    assert 'name' in job, "The Muse job missing 'name' field"
+    assert 'id' in job, "The Muse job missing 'id' field"
+    assert job.get('refs', {}).get('landing_page'), "The Muse job missing landing_page URL"
+
 def test_usajobs_api():
     api_key = get_ssm('/job-pipeline/usajobs-api-key')
     headers = {
@@ -115,6 +131,7 @@ test("S3 — bucket exists", test_s3_bucket_exists)
 test("S3 — candidate_profile.json exists", test_s3_profile_exists)
 test("S3 — candidate profile structure is valid", test_candidate_profile_structure)
 test("API — Remotive returns jobs", test_remotive_api)
+test("API — The Muse returns jobs", test_themuse_api)
 test("API — USAJobs returns jobs", test_usajobs_api)
 test("Azure — Cosmos DB connection works", test_cosmos_db_connection)
 test("AWS — DynamoDB table exists", test_dynamodb_table_exists)

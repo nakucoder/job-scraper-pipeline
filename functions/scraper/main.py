@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 import boto3
 import requests
@@ -93,6 +94,36 @@ def fetch_remotive_swe():
             })
     return jobs
 
+def fetch_themuse():
+    # Free public API — no key required.
+    # Note: The Muse's public API has sparse data. "Entry Level" filter returns
+    # 0 results; querying without a level filter and using the categories that
+    # actually have listings ("Software Engineer", "Data Science").
+    # Contents field is HTML — strip tags before storing.
+    jobs = []
+    for category in ('Software Engineer', 'Data Science'):
+        r = requests.get(
+            'https://www.themuse.com/api/public/jobs',
+            params={'category': category, 'page': 0}
+        )
+        if r.status_code != 200:
+            continue
+        for item in r.json().get('results', []):
+            locations = item.get('locations', [])
+            location = locations[0]['name'] if locations else 'Not specified'
+            html = item.get('contents', '')
+            description = re.sub(r'<[^>]+>', ' ', html).strip()[:500]
+            jobs.append({
+                'id': f"themuse-{item['id']}",
+                'title': item['name'],
+                'company': item.get('company', {}).get('name', 'Unknown'),
+                'location': location,
+                'url': item.get('refs', {}).get('landing_page', ''),
+                'description': description,
+                'source': 'TheMuse'
+            })
+    return jobs
+
 # ── Gemini Enrichment ────────────────────────────────────────────────────────
 def enrich_with_gemini(job, profile, gemini_client):
     prompt = f"""You are a job matching engine. Analyze this job posting against the candidate profile and return ONLY a JSON object with no extra text.
@@ -152,6 +183,7 @@ def scraper(request):
     all_jobs.extend(fetch_usajobs(profile))
     all_jobs.extend(fetch_remotive())
     all_jobs.extend(fetch_remotive_swe())
+    all_jobs.extend(fetch_themuse())
 
     print(f"Fetched {len(all_jobs)} total jobs from all sources")
 

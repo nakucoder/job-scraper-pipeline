@@ -19,6 +19,7 @@ GCP Cloud Scheduler → Cloud Function → Groq (Llama 3.3 70B)
 | GCP | Cloud Scheduler | Daily cron trigger | Free |
 | GCP | Cloud Functions | Scraper + AI enrichment | Free tier |
 | Groq | Llama 3.3 70B | AI job scoring | Free forever (14,400 req/day) |
+| The Muse | Public Jobs API | Tech job listings (no auth) | Free forever |
 | Azure | Cosmos DB | Deduplication store | Free forever |
 | AWS | S3 | Data lake (YYYY/MM/DD partitions) | Free tier |
 | AWS | Lambda ×2 | Filter + API | Free tier |
@@ -48,10 +49,10 @@ Each job posting is passed through Groq's Llama 3.3 70B which returns:
 
 ## 📋 Job Sources
 
-- **USAJobs API** — Federal government listings
-- **Remotive API** — Remote tech jobs
-- **Stack Overflow RSS** — Technical roles
-- **Indeed RSS** — Local Miami listings
+- **USAJobs API** — Federal government listings (nationwide, auth required)
+- **Remotive API** — Remote data engineering roles (no auth)
+- **Remotive API** — Remote software engineering roles (no auth)
+- **The Muse API** — Tech roles via free public API (no auth)
 
 ## 🗂️ Project Structure
 
