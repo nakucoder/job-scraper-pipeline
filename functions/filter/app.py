@@ -15,20 +15,26 @@ def lambda_handler(event, context):
     dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
     table = dynamodb.Table(os.environ.get('DYNAMODB_TABLE', 'job-pipeline-metadata'))
 
-    # ── Read today's jobs from S3 ────────────────────────────────────────────
-    key = f"jobs/{TODAY}/enriched_jobs.json"
+    # ── Find today's jobs file via prefix scan ───────────────────────────────
+    prefix = f"jobs/{TODAY}/"
     try:
-        obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
+        response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
+        contents = response.get('Contents', [])
+        if not contents:
+            print(f"No jobs file found under prefix: {prefix}")
+            send_heartbeat_email(ses, "No jobs file was written to S3 today — the scraper may not have run.")
+            return {'statusCode': 200, 'body': 'No jobs file found today'}
+        latest = max(contents, key=lambda obj: obj['LastModified'])
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=latest['Key'])
         jobs = json.loads(obj['Body'].read())
-    except s3.exceptions.NoSuchKey:
-        print(f"No jobs file found for today: {key}")
-        return {'statusCode': 200, 'body': 'No jobs to process today'}
+        print(f"Reading {latest['Key']}")
     except Exception as e:
         print(f"Error reading S3: {e}")
         return {'statusCode': 500, 'body': str(e)}
 
     if not jobs:
         print("No new jobs today")
+        send_heartbeat_email(ses, "All job listings found today were already seen in previous runs.")
         return {'statusCode': 200, 'body': 'No new jobs today'}
 
     # ── Sort by match score ──────────────────────────────────────────────────
@@ -72,6 +78,29 @@ def lambda_handler(event, context):
         print(f"Error logging to DynamoDB: {e}")
 
     return {'statusCode': 200, 'body': f'Sent {len(jobs)} jobs'}
+
+# ── Heartbeat Email ───────────────────────────────────────────────────────────
+def send_heartbeat_email(ses, reason):
+    try:
+        ses.send_email(
+            Source=SENDER_EMAIL,
+            Destination={'ToAddresses': [RECIPIENT_EMAIL]},
+            Message={
+                'Subject': {
+                    'Data': f'🟢 Pipeline Heartbeat — 0 New Listings ({TODAY})',
+                    'Charset': 'UTF-8'
+                },
+                'Body': {
+                    'Html': {
+                        'Data': f'<p style="font-family:sans-serif;color:#374151;">{reason}</p>',
+                        'Charset': 'UTF-8'
+                    }
+                }
+            }
+        )
+        print(f"Heartbeat email sent: {reason}")
+    except Exception as e:
+        print(f"Error sending heartbeat email: {e}")
 
 # ── Email HTML Builder ────────────────────────────────────────────────────────
 def build_email_html(jobs):
